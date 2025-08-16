@@ -25,20 +25,20 @@ Returns HTTP code 200 on success, or 404 if key not found.
 
 Path: /v1/set  
 Request body: { "key" : "1111" }  
-Returns HTTP code 200 on success, or 404 if key not found, reply body being always empty.
+Always returns HTTP code 200, reply body being empty.
 
 3. Delete key/value entry
 
 Path: /v1/delete  
 Request body: { "key" : "1111" }  
-Returns HTTP code 200 on success, or 404 if key not found, reply body being always empty.
+Always returns HTTP code 200 (no key is success), reply body being empty.
 
 4. Query key/value entries
 
 Path: /v1/query  
 Request body: { "key" : "11" }  
-Returns array of keys with matching key prefix: [ {"key" : "1111"}, {"key" : "1122"} ]
-Returns HTTP code 200.
+Returns array of keys with matching key prefix: [ {"key" : "1111"}, {"key" : "1122"} ]  
+Always returns HTTP code 200.
 
 ## Implementation
 
@@ -52,7 +52,7 @@ More details here: https://github.com/denesb/seastar-app-stub
 
 docker build -t seastar-app-stub .  
 docker run --rm -it -v $(pwd):/home/src seastar-app-stub  
-make all  
+make bin  
 
 ## Running
 
@@ -64,5 +64,7 @@ make test
 
 ## To-do
 
-Implement entry cache with LRU eviction policy.  
-Implement file based server storage using per-CPU core data sharding.
+Implement LRU eviction policy for cache layer (simplest via max records per shard, each shard having its own LRU list).  
+Implement file based server storage using per-CPU core data sharding.  
+Reduce allocation (move where possible, use seastar native types like temporary_buffer instead std::string).  
+Profile with perf.  

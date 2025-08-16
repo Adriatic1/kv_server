@@ -1,18 +1,18 @@
 
-.PHONY: all
-all:
+.PHONY: bin
+bin:
 	@cd server; $(MAKE)
 	@cd test; $(MAKE)
 	@cd perf; $(MAKE)
 
 .PHONY: test
-test:
-	kill -9 $(pidof app) || true
+test: bin
+	pkill -9 app || true
 	./server/app & sleep 2 && ./test/test
 
 .PHONY: perf
-perf:
-	kill -9 $(pidof app) || true
+perf: bin
+	pkill -9 app || true
 	./server/app & sleep 2 && ./perf/client --conn 24 --reqs 100
 
 .PHONY: clean
