@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <vector>
+#include <set>
 #include <unordered_map>
 #include "db.hh"
 
@@ -18,7 +18,7 @@ public:
   future<std::string> get(std::string key);
   future<bool> set(std::string key, std::string value);
   future<bool> del(std::string key);
-  future<bool> query(std::string prefix, std::vector<std::string> &matches);
+  future<std::set<std::string>> query(std::string prefix);
 
   future<> stop() {
       return make_ready_future();
@@ -43,7 +43,7 @@ public:
   future<std::string> get(std::string key) override;
   future<bool> set(std::string key, std::string value) override;
   future<bool> del(std::string key) override;
-  future<bool> query(std::string prefix, std::vector<std::string> &matches) override;
+  future<std::set<std::string>> query(std::string prefix) override;
 
 private:
   unsigned int calc_shard_id(std::string &key) const { return std::hash<std::string>{}(key) % smp::count; }

@@ -36,14 +36,16 @@ future<bool> CacheShard::del(const std::string key)
   co_return true;
 }
 
-future<bool> CacheShard::query(const std::string prefix, std::vector<std::string> &matches)
+future<std::set<std::string>> CacheShard::query(const std::string prefix)
 {
+  // TODO: avoid linear search using lower_bound, will require changing _data from unordered_map to map
+  std::set<std::string> res;
   for (auto &[key, val] : _data) {
     if (key.starts_with(prefix)) {
-       matches.push_back(key);
+       res.insert(key);
     }
   }
-  co_return true;
+  co_return res;
 }
 
 
@@ -99,10 +101,21 @@ future<bool> CacheStorage::del(std::string key)
   co_return success;
 }
 
-future<bool> CacheStorage::query(std::string prefix, std::vector<std::string> &matches)
+static std::set<std::string> set_reducer(std::set<std::string> a, std::set<std::string> b) {
+  a.insert(b.begin(), b.end());
+  return a;
+}
+
+future<std::set<std::string>> CacheStorage::query(std::string prefix)
 {
-  // TODO: invoke_on_all?, map_reduce?
-  co_return true;
+  auto res = co_await _shards->map_reduce0(
+         // Mapper: called on each shard instance
+         [prefix](CacheShard& shard) { return shard.query(prefix); }, 
+         // initial value
+         std::set<std::string>(),
+         // Reduce function
+         set_reducer);
+  co_return res;
 }
 
 }; // namespace kvdb

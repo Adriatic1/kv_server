@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -18,7 +19,7 @@ public:
   virtual future<std::string> get(std::string key) = 0;
   virtual future<bool> set(std::string key, std::string value) = 0;
   virtual future<bool> del(std::string key) = 0;
-  virtual future<bool> query(std::string prefix, std::vector<std::string> &matches) = 0;
+  virtual future<std::set<std::string>> query(std::string prefix) = 0;
 };
 
 
@@ -43,7 +44,7 @@ public:
   future<std::string> get(std::string key) override;
   future<bool> set(std::string key, std::string value) override;
   future<bool> del(std::string key) override;
-  future<bool> query(std::string prefix, std::vector<std::string> &matches) override;
+  future<std::set<std::string>> query(std::string prefix) override;
 
 private:
   std::vector<IStorage *> _stores;

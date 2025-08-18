@@ -45,13 +45,13 @@ future<bool> database::del(const std::string key)
   co_return true;
 }
 
-future<bool> database::query(const std::string prefix, std::vector<std::string> &matches)
+future<std::set<std::string>> database::query(const std::string prefix)
 {
   assert(!_stores.empty());
 
   // only the last layer may store all data (previous ones are caches)
-  co_await _stores.back()->query(prefix, matches);
-  co_return true;
+  std::set<std::string> data = co_await _stores.back()->query(prefix);
+  co_return data;
 }
 
 }; // namespace kvdb

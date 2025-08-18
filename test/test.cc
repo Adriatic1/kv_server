@@ -42,15 +42,15 @@ struct test_info {
  {"/v1/get",    "{ \"key\" : \"2222\" }", 200, "{ \"key\" : \"2222\", \"value\" : \"bbbb\" }"},  // get - key exists
  {"/v1/delete", "{ \"key\" : \"1111\" }", 200, ""},                                              // delete - nonexistent key (succeeds too)
  {"/v1/set",    "{ \"key\" : \"2233\", \"value\" : \"cccc\" }", 200, ""},                        // set - another key stored
- //{"/v1/query",  "{ \"key\" : \"22\" }",   200, "[ {\"key\" : \"2222\"}, {\"key\" : \"2233\"} ]"}, // query by key prefix
+ {"/v1/query",  "{ \"prefix\" : \"22\" }",   200, "[ { \"key\" : \"2222\" }, { \"key\" : \"2233\" } ]"}, // query by key prefix
  {"/v1/delete", "{ \"key\" : \"2222\" }", 200, ""},                                              // delete - key found
  {"/v1/delete", "{ \"key\" : \"2222\" }", 200, ""},                                              // delete - nonexistent key key (already deleted)
- //{"/v1/query",  "{ \"key\" : \"22\" }",   200, "[ {\"key\" : \"2233\"} ]"}                       // query by key prefix
+ {"/v1/query",  "{ \"prefix\" : \"22\" }",   200, "[ { \"key\" : \"2233\" } ]"}                       // query by key prefix
 };
 
 template <typename T> bool runtime_assert_equal(const T &a, const T &b, size_t test_idx) {
   if (a != b) {
-    fmt::print("Test #{} failed, values don't match! [{},{}]", test_idx, a, b);
+    fmt::print("Test #{} failed, [expected,result] values don't match!\n{}\n{}\n", test_idx, a, b);
     return false;
   }
   return true;
@@ -79,7 +79,7 @@ public:
 
         future< std::tuple<std::string, int> > do_req(const struct test_info &t) {
             std::string request = fmt::format("POST {} HTTP/1.1\r\nHost: 127.0.0.1:10000\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", t.path, t.body.size(), t.body);
-	      		// fmt::print("HTTP request:\n[{}]\n", request);
+	        // fmt::print("HTTP request:\n[{}]\n", request);
             co_await _write_buf.write(request);
             co_await _write_buf.flush();
             _parser.init();
@@ -101,8 +101,8 @@ public:
             std::string body;
             if (content_len) {
               seastar::temporary_buffer<char> buf = co_await _read_buf.read_exactly(content_len);
-              // fmt::print("TEST got response: [{}]\n", buf.get());
-              body = buf.get();
+               //fmt::print("TEST got response: [{}]\n", buf.get());
+               body.assign(buf.get(), content_len);  // important to clip the buffer!
             } else {
               // fmt::print("TEST got empty response body\n");
             }

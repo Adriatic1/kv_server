@@ -89,25 +89,31 @@ public:
     }
 };
 
-void set_routes(routes& r) {
-    // TODO: convert to custom class to be able to set 404
-    function_handler* h_query = new function_handler([](std::unique_ptr<http::request> req) -> future<json::json_return_type> {
+class handle_query : public httpd::handler_base {
+public:
+    virtual future<std::unique_ptr<http::reply> > handle(const sstring& path,
+            std::unique_ptr<http::request> req, std::unique_ptr<http::reply> rep) {
         std::string prefix;
         extract_json_value(req->content, "prefix", prefix);
-        std::vector<std::string> matches;
-        std::string out = "[ ";
-        co_await g_db->query(prefix, matches);
+        std::set<std::string> matches = co_await g_db->query(prefix);
+        std::string body = "[ ";
         for (auto &match : matches) {
-           if (out.size() > 2) out += ", ";
-           out += fmt::format("{{ \"key\" : \"{}\" }}", match);
+           if (body.size() > 2) body += ", ";
+           body += fmt::format("{{ \"key\" : \"{}\" }}", match);
         }
-        out += " ]";
-        co_return json::json_return_type(out);
-    });
+        body += " ]";
+        //fmt::print("QUERY HANDLER: body={}\n", body);
+        rep->_content = body;
+        rep->done();
+        co_return std::move(rep);
+    }
+};
+
+void set_routes(routes& r) {
     r.add(operation_type::POST, url("/v1/get"), new handle_get);
     r.add(operation_type::POST, url("/v1/set"), new handle_set);
     r.add(operation_type::POST, url("/v1/delete"), new handle_del);
-    r.add(operation_type::POST, url("/v1/query"), h_query);  
+    r.add(operation_type::POST, url("/v1/query"), new handle_query);
 }
 
 int main(int ac, char** av) {
