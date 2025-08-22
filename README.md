@@ -40,6 +40,21 @@ Request body: { "key" : "11" }
 Returns array of keys with matching key prefix: [ {"key" : "1111"}, {"key" : "1122"} ]  
 Always returns HTTP code 200.
 
+## On-disk layout
+
+On-disk data is stored in separate file for each CPU core shard.  
+Data consists of individual key/value records stored sequentially,
+records are always appended to the existing file.  
+Records being deleted are kept in place, just marking their status
+flag as deleted.  
+
+Record layout:
+ - 1 byte record status: 2-valid, 1-deleted
+ - 2 byte key length (unsigned)
+ - 8 bytes value length (unsigned)
+ - key data bytes follow
+ - value data bytes follow
+
 ## Implementation
 
 Initial code layout/compilation based on app template at https://github.com/denesb/seastar-app-stub  
@@ -65,6 +80,5 @@ make test
 ## To-do
 
 Implement LRU eviction policy for cache layer (simplest via max records per shard, each shard having its own LRU list).  
-Implement file based server storage using per-CPU core data sharding.  
 Reduce allocation (move where possible, use seastar native types like temporary_buffer instead std::string).  
 Profile with perf.  

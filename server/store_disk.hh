@@ -7,12 +7,13 @@
 
 #include <seastar/core/seastar.hh>
 #include <seastar/core/distributed.hh>
+#include <seastar/core/file.hh>
 
 using namespace seastar;
 
 namespace kvdb {
 
-class CacheShard {
+class DiskShard {
 public:
 
   future<std::string> get(std::string key);
@@ -20,24 +21,26 @@ public:
   future<bool> del(std::string key);
   future<std::set<std::string>> query(std::string prefix);
 
-  future<> stop() {
-      return make_ready_future();
-  }
+  future<> start();
+  future<> stop();
 
 protected:
-  std::unordered_map<std::string, std::string> _data;
-  size_t _max_records;          // max records per shard is easier to implement
-  // std::queue<std::string> _lru;  // TODO
+  future<> build_db_index();
+
+protected:
+  file _f;
+  // [offset, size] for disk record "value" member from key
+  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> _index;
+  uint64_t _end_offset{0};
 };
 
 /*
-  Implement in-memory cache with limited number of records,
-  using LRU eviction policy.
+  Implement on-disk database.
 */
-class CacheStorage : public IStorage {
+class DiskStorage : public IStorage {
 public:
-  CacheStorage(size_t max_records);
-  virtual ~CacheStorage();
+  DiskStorage();
+  virtual ~DiskStorage();
 
   future<> start() override;
   future<> stop() override;
@@ -50,11 +53,8 @@ public:
 private:
   unsigned int calc_shard_id(std::string &key) const { return std::hash<std::string>{}(key) % smp::count; }
 
-  size_t _max_records;
-  // seastar::queue<std::string> _lru;  // LRU tracking
-
   // data sharded to a number of cores
-  seastar::distributed<CacheShard> *_shards;
+  seastar::distributed<DiskShard> *_shards;
 };
 
 }; // namespace kvdb

@@ -8,7 +8,7 @@ bin:
 .PHONY: test
 test: bin
 	pkill -9 app || true
-	./server/app & sleep 2 && ./test/test
+	./server/app & sleep 2 && ./test/test && pkill app
 
 .PHONY: perf
 perf: bin
@@ -20,3 +20,6 @@ clean:
 	@cd server; $(MAKE) clean
 	@cd test; $(MAKE) clean
 	@cd perf; $(MAKE) clean
+
+cleandb:
+	rm -f ./kvdb_data.*.bin

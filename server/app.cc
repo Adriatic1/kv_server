@@ -12,8 +12,8 @@
 #include <seastar/http/reply.hh>
 #include "stop_signal.hh"
 
-#include "db.hh"
 #include "store_cache.hh"
+#include "store_disk.hh"
 
 namespace bpo = boost::program_options;
 
@@ -122,12 +122,16 @@ int main(int ac, char** av) {
     return app.run(ac, av, [&] () -> future<int> {
         seastar_apps_lib::stop_signal stop_signal;
 
-        // initialize in-memory cache database
+        // initialize database server with two layers:
+        // - in-memory cache
+        // - on-disk storage
         IStorage *cache = new CacheStorage(20);
-        std::vector<IStorage *> store{ cache };
-        g_db = std::make_unique<database>(store);
+        IStorage *disk = new DiskStorage();
+        std::vector<IStorage *> store{ cache, disk };
+        //std::vector<IStorage *> store{ disk };
 
-        co_await static_cast<CacheStorage *>(cache)->start();
+        g_db = std::make_unique<database>(store);
+        co_await g_db->start();
 
         http_server_control server;
         co_await server.start();
@@ -136,7 +140,8 @@ int main(int ac, char** av) {
 
         co_await stop_signal.wait();
         co_await server.stop();
-        co_await static_cast<CacheStorage *>(cache)->stop();
+        co_await g_db->stop();
+
         co_return 0;
    });
 }

@@ -20,11 +20,14 @@ public:
   virtual future<bool> set(std::string key, std::string value) = 0;
   virtual future<bool> del(std::string key) = 0;
   virtual future<std::set<std::string>> query(std::string prefix) = 0;
+
+  virtual future<> start() = 0;
+  virtual future<> stop() = 0;
 };
 
 
 /*
-  Database implementation, supporting multiple stores
+  Database implementation, supporting multiple layers
   (in-memory cache + on-disk storage for example), used in order
   as being stored within the container.
   Reading:
@@ -38,7 +41,7 @@ public:
 */
 class database : public IStorage {
 public:
-  database(std::vector<IStorage *> stores) : _stores(std::move(stores)) {};
+  database(std::vector<IStorage *> layers) : _layers(std::move(layers)) {};
   ~database();
 
   future<std::string> get(std::string key) override;
@@ -46,8 +49,11 @@ public:
   future<bool> del(std::string key) override;
   future<std::set<std::string>> query(std::string prefix) override;
 
+  future<> start() override;
+  future<> stop() override;
+
 private:
-  std::vector<IStorage *> _stores;
+  std::vector<IStorage *> _layers;
 };
 
 }; // namespace kvdb

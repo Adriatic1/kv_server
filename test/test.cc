@@ -124,6 +124,7 @@ public:
 
         size_t test_idx = 0;
         for (auto &t : all_tests) {
+          fmt::print("Test #{} start.\n", test_idx);
           auto [ data, code ] = co_await conn->do_req(t);
 
           // validate test results

@@ -16,7 +16,7 @@ future<std::string> CacheShard::get(std::string key)
   co_return std::string();
 }
 
-future<bool> CacheShard::set(const std::string key, std::string value)
+future<bool> CacheShard::set(std::string key, std::string value)
 {
   const auto it = _data.find(key);
   if (it != _data.end()) {
