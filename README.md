@@ -61,6 +61,9 @@ Initial code layout/compilation based on app template at https://github.com/dene
 HTTP server framework was based on Seastar's httpd example application.  
 Both test and performance client were based on seawreck example code.
 
+To enable scaling and avoid contention, LRU eviction policy for cache layer was implemented
+in a share-nothing way, i.e. it is enforced per shard, each shard having its own separate LRU tracking list.
+
 ## Compiling
 
 More details here: https://github.com/denesb/seastar-app-stub
@@ -79,6 +82,5 @@ make test
 
 ## To-do
 
-Implement LRU eviction policy for cache layer (simplest via max records per shard, each shard having its own LRU list).  
-Reduce allocation (move where possible, use seastar native types like temporary_buffer instead std::string).  
+Reduce allocations (move where possible, use seastar native types like temporary_buffer instead std::string).  
 Profile with perf.  

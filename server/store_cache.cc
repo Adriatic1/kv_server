@@ -6,7 +6,6 @@
 
 namespace kvdb {
 
-
 future<std::string> CacheShard::get(std::string key)
 {
   const auto it = _data.find(key);
@@ -22,7 +21,24 @@ future<bool> CacheShard::set(std::string key, std::string value)
   if (it != _data.end()) {
     it->second = value;
   } else {
+    // run LRU eviction policy for this shard
+    if (_lru.size() >= _max_records) {
+      std::string lru_key = _lru.front();
+      fmt::print("CacheShard: LRU evict key {}", lru_key);
+      _lru.pop_front();
+      co_await del(lru_key);
+    }
+
     _data[key] = value;
+
+    // refresh LRU list (add/move key at the back)
+    for (auto it = _lru.begin(); it != _lru.end(); ++it) {
+      if (*it == key) {
+        _lru.erase(it);
+        break;
+      }
+    }
+    _lru.push_back(key);
   }
   co_return true;
 }
@@ -32,6 +48,14 @@ future<bool> CacheShard::del(const std::string key)
   const auto it = _data.find(key);
   if (it != _data.end()) {
     _data.erase(it);
+
+    // refresh LRU list (remove key)
+    for (auto it = _lru.begin(); it != _lru.end(); ++it) {
+      if (*it == key) {
+        _lru.erase(it);
+        break;
+      }
+    }
   }
   co_return true;
 }
@@ -51,10 +75,8 @@ future<std::set<std::string>> CacheShard::query(const std::string prefix)
 
 CacheStorage::CacheStorage(size_t max_records)
  : _max_records(max_records),
-//   _lru(max_records),
    _shards(new seastar::distributed<CacheShard>)
 {
-  assert(_max_records > 0);
 }
 
 CacheStorage::~CacheStorage() {
@@ -63,7 +85,7 @@ CacheStorage::~CacheStorage() {
 
 future<> CacheStorage::start()
 {
-   co_await _shards->start();
+   co_await _shards->start(_max_records);
    co_return;
 }
 
@@ -84,11 +106,6 @@ future<std::string> CacheStorage::get(std::string key)
 
 future<bool> CacheStorage::set(std::string key, std::string value)
 {
-  /* LRU eviction policy
-  if (_lru.full()) {
-    std::string lru_key = co_await _lru.pop();
-  } */
-
   const auto cpu = calc_shard_id(key);
   const bool success = co_await _shards->invoke_on(cpu, &CacheShard::set, key, value);
   co_return success;

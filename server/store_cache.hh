@@ -2,7 +2,7 @@
 
 #include <string>
 #include <set>
-#include <unordered_map>
+#include <list>
 #include "db.hh"
 
 #include <seastar/core/seastar.hh>
@@ -14,6 +14,7 @@ namespace kvdb {
 
 class CacheShard {
 public:
+  CacheShard(size_t max_records) : _max_records(max_records) {}
 
   future<std::string> get(std::string key);
   future<bool> set(std::string key, std::string value);
@@ -26,8 +27,10 @@ public:
 
 protected:
   std::unordered_map<std::string, std::string> _data;
-  size_t _max_records;          // max records per shard is easier to implement
-  // std::queue<std::string> _lru;  // TODO
+  // max records per shard is easier to implement
+  // no shared queue contention
+  size_t _max_records;
+  std::list<std::string> _lru;
 };
 
 /*
@@ -51,8 +54,6 @@ private:
   unsigned int calc_shard_id(std::string &key) const { return std::hash<std::string>{}(key) % smp::count; }
 
   size_t _max_records;
-  // seastar::queue<std::string> _lru;  // LRU tracking
-
   // data sharded to a number of cores
   seastar::distributed<CacheShard> *_shards;
 };
